@@ -25,7 +25,7 @@ while True:
     opcao = input("Digite o nome do produto: ").lower()
     quantidade = int(input("Digite a quantidade desejada: "))
 
-    # Procura o produto no banco de dados
+    # Procura o preço no banco de dados
     cursor.execute(
         "SELECT preco FROM produtos WHERE nome = ?",
         (opcao,)

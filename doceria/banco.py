@@ -25,12 +25,6 @@ cursor.executemany(
 
 conexao.commit()
 
-# Consulta os produtos cadastrados
-cursor.execute("SELECT * FROM produtos")
-
-produtos_cadastrados = cursor.fetchall()
-
-print("\nPRODUTOS CADASTRADOS:")
-print(produtos_cadastrados)
+print("Banco de dados configurado com sucesso!")
 
 conexao.close()
