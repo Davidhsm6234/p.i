@@ -1,12 +1,13 @@
-
-App . JS
 // app.js – interface e regras do chatbot.
 // O carrinho (adicionar, remover, total, resumo) roda em C++ (doceria.cpp -> WebAssembly).
  
 // Precisa existir ANTES do doceria.js carregar.
-var Module = { onRuntimeInitialized: iniciar };
+var Module = {
+  onRuntimeInitialized: iniciar,
+  onAbort: m => mostrarErro("O módulo C++ falhou ao carregar: " + m),
+};
  
-// Só para exibir no cardápio; o preço "oficial" está no C++.
+// A posição na lista = id do produto no C++ (mesma ordem do doceria.cpp).
 const PRODUCTS = [
   { k: "brigadeiro", n: "Brigadeiro",             p: 3.5 },
   { k: "beijinho",   n: "Beijinho",               p: 3.5 },
@@ -16,26 +17,46 @@ const PRODUCTS = [
   { k: "cookie",     n: "Cookie",                 p: 6 },
   { k: "bolo",       n: "Bolo de pote",           p: 10 },
 ];
+PRODUCTS.forEach((p, i) => p.id = i);
  
 let cartAdd, cartRemove, cartQty, cartTotal, cartClear, cartSummary; // funções do C++
+let pronto = false;
 let pending = null; // produto aguardando quantidade
  
 const $ = id => document.getElementById(id);
 const brl = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
  
-function iniciar() {
-  cartAdd     = Module.cwrap("cart_add",     "number", ["string", "number"]);
-  cartRemove  = Module.cwrap("cart_remove",  "number", ["string", "number"]);
-  cartQty     = Module.cwrap("cart_qty",     "number", ["string"]);
-  cartTotal   = Module.cwrap("cart_total",   "number", []);
-  cartClear   = Module.cwrap("cart_clear",   null,     []);
-  cartSummary = Module.cwrap("cart_summary", "string", []);
+function mostrarErro(msg) { say("⚠️ " + msg, "bot"); }
  
-  $("f").onsubmit = e => { e.preventDefault(); const v = $("in").value; $("in").value = ""; send(v); };
-  renderCart();
-  say("Olá! 😊 Bem-vindo(a) à Doceria da Vó!\n" + menuText(), "bot");
-  menuQuick();
+$("f").onsubmit = e => {
+  e.preventDefault();
+  const v = $("in").value;
+  $("in").value = "";
+  if (!pronto) return mostrarErro("O módulo C++ ainda não carregou. Confira se doceria.js e doceria.wasm foram publicados.");
+  send(v);
+};
+ 
+setTimeout(() => {
+  if (!pronto) mostrarErro("O módulo C++ não carregou. Abra o console do navegador (F12) para ver o erro.");
+}, 4000);
+ 
+function iniciar() {
+  try {
+    cartAdd     = Module.cwrap("cart_add",    "number", ["number", "number"]);
+    cartRemove  = Module.cwrap("cart_remove", "number", ["number", "number"]);
+    cartQty     = Module.cwrap("cart_qty",    "number", ["number"]);
+    cartTotal   = Module.cwrap("cart_total",  "number", []);
+    cartClear   = Module.cwrap("cart_clear",  null,     []);
+    cartSummary = () => Module.UTF8ToString(Module._cart_summary());
+    pronto = true;
+ 
+    renderCart();
+    say("Olá! 😊 Bem-vindo(a) à Doceria da Vó!\n" + menuText(), "bot");
+    menuQuick();
+  } catch (e) {
+    mostrarErro("Erro ao iniciar: " + e.message);
+  }
 }
  
 /* ---------- Interface ---------- */
@@ -73,7 +94,7 @@ function renderCart() {
   let temItem = false;
  
   PRODUCTS.forEach(p => {
-    const q = cartQty(p.k);               // <- C++
+    const q = cartQty(p.id);               // <- C++
     if (q <= 0) return;
     temItem = true;
  
@@ -82,8 +103,8 @@ function renderCart() {
     linha.innerHTML = '<span class="n"></span><button>−</button><b>' + q + "</b><button>+</button>";
     linha.querySelector(".n").textContent = p.n;
     const [menos, mais] = linha.querySelectorAll("button");
-    menos.onclick = () => { cartRemove(p.k, 1); renderCart(); };   // <- C++
-    mais.onclick  = () => { cartAdd(p.k, 1);    renderCart(); };   // <- C++
+    menos.onclick = () => { cartRemove(p.id, 1); renderCart(); };   // <- C++
+    mais.onclick  = () => { cartAdd(p.id, 1);    renderCart(); };   // <- C++
     c.appendChild(linha);
   });
  
@@ -93,7 +114,7 @@ function renderCart() {
  
 /* ---------- Regras do bot ---------- */
 function adicionar(produto, qtd) {
-  cartAdd(produto.k, qtd);                     // <- C++
+  cartAdd(produto.id, qtd);                     // <- C++
   renderCart();
   say(`Adicionei ${qtd}x ${produto.n} ao pedido! 🎉\nQuer mais alguma coisa? Escolha outro produto ou diga "finalizar".`, "bot");
   menuQuick();
@@ -166,3 +187,4 @@ function send(texto) {
   say(texto, "me");
   setTimeout(() => responder(texto), 250);
 }
+ 
