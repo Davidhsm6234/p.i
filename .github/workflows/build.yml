@@ -44,7 +44,7 @@ jobs:
       - name: Compilar C++ para WebAssembly
         working-directory: ${{ env.APP_DIR }}
         run: |
-          emcc doceria.cpp -O2 -o doceria.js \
+          em++ doceria.cpp -O2 -o doceria.js \
             -s EXPORTED_FUNCTIONS="['_cart_add','_cart_remove','_cart_qty','_cart_total','_cart_clear','_cart_summary','_price_of']" \
             -s EXPORTED_RUNTIME_METHODS="['ccall','cwrap','UTF8ToString']"
  
