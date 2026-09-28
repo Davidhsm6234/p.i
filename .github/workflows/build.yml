@@ -1,0 +1,78 @@
+# Salve este arquivo no repositório em: .github/workflows/build.yml
+#
+# O que ele faz a cada push na branch main:
+#   1. Instala o Emscripten nos servidores do GitHub
+#   2. Compila doceria.cpp -> doceria.js + doceria.wasm
+#   3. Gera um artefato para download (doceria-chatbot)
+#   4. Publica o site no GitHub Pages
+ 
+name: Build e Deploy (C++ -> WebAssembly)
+ 
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # permite rodar manualmente pela aba Actions
+ 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+ 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+ 
+env:
+  # Pasta onde estão index.html, style.css, app.js e doceria.cpp.
+  # Se estiverem na raiz do repositório, deixe ".".
+  # Se estiverem em uma subpasta, troque (ex.: "doceria-chatbot").
+  APP_DIR: "doceriachatbot"
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+ 
+      - name: Instalar Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+ 
+      - name: Conferir versão do emcc
+        run: emcc --version
+ 
+      - name: Compilar C++ para WebAssembly
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          emcc doceria.cpp -O2 -o doceria.js \
+            -s EXPORTED_FUNCTIONS="['_cart_add','_cart_remove','_cart_qty','_cart_total','_cart_clear','_cart_summary','_price_of']" \
+            -s EXPORTED_RUNTIME_METHODS="['ccall','cwrap','UTF8ToString']"
+ 
+      - name: Montar a pasta do site
+        run: |
+          mkdir -p _site
+          cp "$APP_DIR"/index.html "$APP_DIR"/style.css "$APP_DIR"/app.js \
+             "$APP_DIR"/doceria.js "$APP_DIR"/doceria.wasm _site/
+          ls -l _site
+ 
+      - name: Guardar arquivos para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: doceria-chatbot
+          path: _site
+ 
+      - name: Preparar publicação no Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+ 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
