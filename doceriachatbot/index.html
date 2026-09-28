@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Doceria da Vó – Chatbot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <section class="panel">
+      <h1>🧁 Doceria da Vó – Atendimento</h1>
+      <div id="msgs"></div>
+      <div id="quick"></div>
+      <form id="f">
+        <input id="in" placeholder="Ex.: 3 brigadeiros" autocomplete="off">
+        <button class="send">Enviar</button>
+      </form>
+    </section>
+ 
+    <aside class="panel">
+      <h2>🛒 Seu pedido</h2>
+      <div id="cart"></div>
+      <div class="tot"><span>Total</span><span id="total">R$ 0,00</span></div>
+    </aside>
+  </div>
+ 
+  <!-- app.js vem primeiro: ele define o Module que o doceria.js (gerado pelo C++) usa -->
+  <script src="app.js"></script>
+  <script src="doceria.js"></script>
+</body>
+</html>

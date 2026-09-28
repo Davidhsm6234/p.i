@@ -1,0 +1,40 @@
+:root{
+  --bg:#fff5f7; --card:#fff; --ink:#3b2230; --muted:#8a6b7a;
+  --pink:#d6336c; --pink2:#fde0ea; --bot:#fde0ea; --me:#d6336c; --line:#f0cbd8;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#1d1218;--card:#2a1a23;--ink:#f6e6ee;--muted:#c49bb0;--pink:#f06595;--pink2:#3d2431;--bot:#3d2431;--me:#c2255c;--line:#4a2e3c}
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+
+.app{height:100%;max-width:980px;margin:0 auto;padding:12px;display:grid;grid-template-columns:1fr 300px;gap:12px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+h1,h2{font-size:1.05rem;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}
+
+/* Chat */
+#msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:82%;padding:9px 13px;border-radius:14px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
+.bot{background:var(--bot);align-self:flex-start;border-bottom-left-radius:4px}
+.me{background:var(--me);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+
+#quick{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
+#quick button{border:1px solid var(--pink);background:transparent;color:var(--pink);border-radius:999px;padding:6px 12px;font-size:.85rem;cursor:pointer}
+#quick button:hover{background:var(--pink2)}
+
+form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+input{flex:1;min-width:0;padding:11px 13px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:1rem}
+.send{border:0;background:var(--pink);color:#fff;border-radius:999px;padding:0 18px;font-weight:600;cursor:pointer}
+
+/* Carrinho */
+#cart{flex:1;overflow-y:auto;padding:10px 14px}
+.it{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.it .n{flex:1}
+.it button{width:24px;height:24px;border-radius:50%;border:1px solid var(--pink);background:transparent;color:var(--pink);cursor:pointer;line-height:1}
+.empty{color:var(--muted);font-size:.9rem;padding:10px 0}
+.tot{padding:12px 16px;border-top:1px solid var(--line);font-weight:700;display:flex;justify-content:space-between}
+
+@media (max-width:720px){
+  .app{grid-template-columns:1fr;grid-template-rows:1fr 210px}
+}
