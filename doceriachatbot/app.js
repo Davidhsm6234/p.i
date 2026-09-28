@@ -52,7 +52,7 @@ function iniciar() {
     pronto = true;
  
     renderCart();
-    say("Olá! 😊 Bem-vindo(a) à Doceria da Vó!\n" + menuText(), "bot");
+    say("Olá! 😊 Bem-vindo(a) à Juber Doces!\n" + menuText(), "bot");
     menuQuick();
   } catch (e) {
     mostrarErro("Erro ao iniciar: " + e.message);
