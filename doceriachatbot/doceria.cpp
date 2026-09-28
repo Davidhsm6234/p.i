@@ -1,94 +1,84 @@
-// doceria.cpp â€“ lÃ³gica do pedido (catÃ¡logo + carrinho) em C++
-// Sem banco de dados: tudo fica em memÃ³ria (std::map).
+// doceria.cpp – lógica do pedido (catálogo + carrinho) em C++
+// Sem banco de dados: tudo fica em memória.
+// Os produtos são identificados por número (0, 1, 2...) para simplificar a ligação com o JavaScript.
 //
-// Compilar para WebAssembly (Emscripten):
-//   emcc doceria.cpp -O2 -o doceria.js
-//     -s EXPORTED_FUNCTIONS="['_cart_add','_cart_remove','_cart_qty','_cart_total','_cart_clear','_cart_summary','_price_of']"
-//     -s EXPORTED_RUNTIME_METHODS="['ccall','cwrap','UTF8ToString']"
-//   (tudo em uma linha sÃ³, no terminal)
+// Compilar para WebAssembly (use em++, pois é C++), tudo em uma linha:
+//   em++ doceria.cpp -O2 -o doceria.js -s EXPORTED_FUNCTIONS="['_cart_add','_cart_remove','_cart_qty','_cart_total','_cart_clear','_cart_summary','_price_of']" -s EXPORTED_RUNTIME_METHODS="['ccall','cwrap','UTF8ToString']"
 //
 // Teste nativo:  g++ -std=c++17 doceria.cpp -o doceria && ./doceria
-
+ 
 #include <cstdio>
-#include <map>
 #include <string>
-
-struct Produto { std::string nome; double preco; };
-
-static const std::map<std::string, Produto> CATALOGO = {
-    {"brigadeiro", {"Brigadeiro", 3.50}},
-    {"beijinho",   {"Beijinho", 3.50}},
-    {"brownie",    {"Brownie", 8.00}},
-    {"cupcake",    {"Cupcake", 9.00}},
-    {"torta",      {"Torta de limao (fatia)", 12.00}},
-    {"cookie",     {"Cookie", 6.00}},
-    {"bolo",       {"Bolo de pote", 10.00}},
+#include <vector>
+ 
+struct Produto { const char* nome; double preco; };
+ 
+// A posição na lista é o "id" do produto (mesma ordem do app.js)
+static const std::vector<Produto> CATALOGO = {
+    {"Brigadeiro", 3.50},
+    {"Beijinho", 3.50},
+    {"Brownie", 8.00},
+    {"Cupcake", 9.00},
+    {"Torta de limão (fatia)", 12.00},
+    {"Cookie", 6.00},
+    {"Bolo de pote", 10.00},
 };
-
-static std::map<std::string, int> carrinho;  // chave -> quantidade
-static std::string bufferResumo;             // mantÃ©m a string viva para o JS ler
-
+ 
+static std::vector<int> carrinho(CATALOGO.size(), 0);  // quantidade de cada produto
+static std::string bufferResumo;                       // mantém o texto vivo para o JS ler
+ 
+static bool valido(int id) { return id >= 0 && id < (int)CATALOGO.size(); }
+ 
 extern "C" {
-
-// PreÃ§o unitÃ¡rio (-1 se o produto nÃ£o existe)
-double price_of(const char* chave) {
-    auto it = CATALOGO.find(chave);
-    return it == CATALOGO.end() ? -1.0 : it->second.preco;
+ 
+double price_of(int id) { return valido(id) ? CATALOGO[id].preco : -1.0; }
+ 
+// Adicionar produto + quantidade. Retorna a nova quantidade, ou -1 se inválido.
+int cart_add(int id, int qtd) {
+    if (!valido(id) || qtd <= 0) return -1;
+    carrinho[id] += qtd;
+    return carrinho[id];
 }
-
-// Adicionar produto + quantidade. Retorna a nova quantidade, ou -1 se invÃ¡lido.
-int cart_add(const char* chave, int qtd) {
-    if (qtd <= 0 || CATALOGO.find(chave) == CATALOGO.end()) return -1;
-    carrinho[chave] += qtd;
-    return carrinho[chave];
+ 
+// Remove unidades (nunca fica abaixo de zero). Retorna a quantidade restante.
+int cart_remove(int id, int qtd) {
+    if (!valido(id) || qtd <= 0) return 0;
+    carrinho[id] -= qtd;
+    if (carrinho[id] < 0) carrinho[id] = 0;
+    return carrinho[id];
 }
-
-// Remove unidades; apaga o item se chegar a zero. Retorna a quantidade restante.
-int cart_remove(const char* chave, int qtd) {
-    auto it = carrinho.find(chave);
-    if (it == carrinho.end() || qtd <= 0) return 0;
-    it->second -= qtd;
-    if (it->second <= 0) { carrinho.erase(it); return 0; }
-    return it->second;
-}
-
-int cart_qty(const char* chave) {
-    auto it = carrinho.find(chave);
-    return it == carrinho.end() ? 0 : it->second;
-}
-
+ 
+int cart_qty(int id) { return valido(id) ? carrinho[id] : 0; }
+ 
 double cart_total() {
     double total = 0;
-    for (const auto& [chave, qtd] : carrinho) total += CATALOGO.at(chave).preco * qtd;
+    for (size_t i = 0; i < CATALOGO.size(); i++) total += CATALOGO[i].preco * carrinho[i];
     return total;
 }
-
-void cart_clear() { carrinho.clear(); }
-
-// Resumo em texto (ponteiro vÃ¡lido atÃ© a prÃ³xima chamada)
+ 
+void cart_clear() { for (int& q : carrinho) q = 0; }
+ 
 const char* cart_summary() {
-    if (carrinho.empty()) { bufferResumo = "Seu carrinho esta vazio."; return bufferResumo.c_str(); }
-    bufferResumo = "Seu pedido:\n";
+    bufferResumo = "";
     char linha[160];
-    for (const auto& [chave, qtd] : carrinho) {
-        const Produto& p = CATALOGO.at(chave);
-        std::snprintf(linha, sizeof linha, "- %dx %s: R$ %.2f\n", qtd, p.nome.c_str(), p.preco * qtd);
+    for (size_t i = 0; i < CATALOGO.size(); i++) {
+        if (carrinho[i] <= 0) continue;
+        std::snprintf(linha, sizeof linha, "• %dx %s – R$ %.2f\n", carrinho[i], CATALOGO[i].nome, CATALOGO[i].preco * carrinho[i]);
         bufferResumo += linha;
     }
+    if (bufferResumo.empty()) return "Seu carrinho está vazio.";
+    bufferResumo = "Seu pedido:\n" + bufferResumo;
     std::snprintf(linha, sizeof linha, "Total: R$ %.2f", cart_total());
     bufferResumo += linha;
     return bufferResumo.c_str();
 }
-
+ 
 }  // extern "C"
-
-// Teste rÃ¡pido fora do navegador
+ 
 #ifndef __EMSCRIPTEN__
 int main() {
-    cart_add("brigadeiro", 6);
-    cart_add("brownie", 2);
-    cart_add("brigadeiro", 4);
-    cart_remove("brownie", 1);
+    cart_add(0, 6); cart_add(2, 2); cart_add(0, 4); cart_remove(2, 1);
     std::printf("%s\n", cart_summary());
 }
 #endif
+ 
